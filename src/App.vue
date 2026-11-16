@@ -134,10 +134,10 @@ function forget() {
 async function load() {
   error.value = ''
   notice.value = ''
-  busy.value = 'Loading collection…'
+  busy.value = 'Loading addons…'
   try {
     const result = await getCollection(key.value)
-    if (!result.addons.length) throw new Error('the collection is empty — this does not look like a Stremio account')
+    if (!result.addons.length) throw new Error('no addons found — this does not look like a Stremio account')
     addons.value = clone(result.addons)
     baseline.value = snapshot()
     rememberOrigin(addons.value)
@@ -168,9 +168,7 @@ async function save() {
   const summary = [
     `Addons: ${addons.value.length}`,
     `Hidden from Home: ${hidden}`,
-    backupOnSave.value
-      ? 'A copy of the current collection will be downloaded before writing.'
-      : 'No backup will be downloaded before writing.',
+    `Backup: ${backupOnSave.value ? 'enabled' : 'disabled'}`,
     'Continue?',
   ].join('\n')
   if (!confirm(summary)) return
@@ -190,7 +188,7 @@ async function save() {
     baseline.value = snapshot()
     check.addons.forEach((addon) => refreshLogo(addon))
     if (!orderOk) {
-      notice.value = 'Saved, but the order differs after re-reading — check the collection.'
+      notice.value = 'Saved, but the order differs after re-reading — check the addons.'
     } else if (hiddenExpected !== hiddenActual) {
       notice.value = `Order saved, but the Home markers did not stick (${hiddenExpected} → ${hiddenActual}): the server refetched the manifests.`
     } else {
@@ -295,9 +293,9 @@ async function restoreFile(event) {
     const list = Array.isArray(parsed) ? parsed : parsed.addons
     if (!Array.isArray(list) || list.length === 0) throw new Error('the file has no addon array')
     if (!list.every((a) => a.transportUrl && a.manifest && a.manifest.name && a.manifest.version)) {
-      throw new Error('this is not a Stremio collection')
+      throw new Error('this is not a Stremio addon list')
     }
-    if (!confirm(`Restore from ${file.name}? The current collection will be replaced and no backup is downloaded.`)) return
+    if (!confirm(`Restore from ${file.name}?\nThe current addon order will be replaced.`)) return
     busy.value = 'Restoring…'
     await setCollection(key.value, list)
     await load()
@@ -325,7 +323,7 @@ function flagText(addon) {
         <span class="mark" aria-hidden="true">SAM</span>
         <div>
           <h1>SAM</h1>
-          <p class="sub">Addons Manager for Stremio — order, logos and Home visibility. The collection is written straight to your account.</p>
+          <p class="sub">Order, logos and Home visibility for your Stremio addons. Changes are written straight to your account.</p>
         </div>
       </div>
       <button v-if="loggedIn" class="ghost" @click="forget">Sign out</button>
@@ -359,7 +357,7 @@ function flagText(addon) {
         <span class="spacer" />
         <label class="check backup">
           <input v-model="backupOnSave" type="checkbox" @change="setBackupPref" />
-          Back up the current collection
+          Back up the current order
         </label>
         <span v-if="dirty" class="dirty">unsaved changes</span>
         <button class="primary" :disabled="!dirty || !!busy" @click="save">Save to Stremio</button>
@@ -436,11 +434,11 @@ function flagText(addon) {
       </section>
 
       <p class="hint foot">
-        The checkbox edits the catalog manifest inside the collection: a catalog with a required filter is skipped by the
+        The checkbox edits the catalog manifest stored with the addon: a catalog with a required filter is skipped by the
         Home board but stays in Discover (as a dropdown filter) and in search. Only catalogs that already declare
         <code>genre</code> or <code>search</code> can be hidden; for the rest the checkbox stays disabled — otherwise the
         addon would start receiving a filter it does not understand. Rows marked <em>hidden by addon</em> were shipped that
-        way by the addon itself; unchecking an addon restores every catalog to the state it had when the collection was
+        way by the addon itself; unchecking an addon restores every catalog to the state it had when the addons were
         loaded, so the addon's own choices survive.
       </p>
     </template>
