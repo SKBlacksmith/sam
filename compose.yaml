@@ -1,8 +1,15 @@
 services:
   sam:
-    build: .
-    image: sam:1.0.1
+    image: ghcr.io/skblacksmith/sam:1.0.2
+    # To build a local checkout instead of pulling the image, uncomment the next
+    # line and remove `image:` above.
+    # build: .
     container_name: sam
     restart: unless-stopped
     ports:
       - "8095:80"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]
+      interval: 30s
+      timeout: 3s
+      retries: 3

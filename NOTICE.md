@@ -1,4 +1,8 @@
-# External components
+# External components and licensing
+
+SAM is licensed under the GNU Affero General Public License v3.0 or later. The AGPL adds
+a network clause: if a modified version is run as a service, its source must be offered
+to the users of that service (section 13).
 
 This project is an independent implementation. It contains no code from
 `pancake3000/stremio-addon-manager` or `redd-ravenn/stremio-addon-manager`.
@@ -18,3 +22,6 @@ in `src/board.js`.
 
 `api.strem.io` is a third-party service used at runtime; this project is not
 affiliated with Stremio.
+
+MIT and the AGPL are compatible in this direction: MIT-licensed code can be distributed
+as part of an AGPL-licensed work, as long as the MIT notices are kept.

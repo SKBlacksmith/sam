@@ -15,32 +15,62 @@ straight from the browser (the API allows any origin).
 - **Order** — drag rows; the array order in the addon collection is the row order on Home.
 - **Logos** — the stored manifest is a snapshot and often has no `logo`, a dead URL or a
   relative path. Resolution chain: stored logo → live `<transportUrl>/manifest.json` →
-  host `favicon.ico` → monogram tile. Results are cached for a week in `localStorage`.
+  host `favicon.ico` → monogram tile. Hits are cached for a week in `localStorage`,
+  failures for 15 minutes so a fixed icon shows up without waiting.
 - **Hide from Home** — a per-addon checkbox. It flips `isRequired` on an existing
   `genre` (preferred) or `search` extra of each catalog. A catalog with a required extra
   is never requested with an empty extra, so the board skips it while Discover keeps it
   (with a filter dropdown). Catalogs without `genre`/`search` cannot be toggled — the
   checkbox stays disabled instead of inventing a filter the addon does not understand.
-- **Safety** — a JSON copy of the current collection is downloaded before every write;
-  the collection can be restored from such a file; after saving the app re-reads the
-  collection and verifies order and board state.
+- **Per-catalog list** — expand an addon to see every catalog and its state (`on Home`,
+  `hidden by addon`, `hidden by you`, `shown by you`); unchecking the addon returns each
+  catalog to the state it had before you touched it.
+- **Safety** — an optional JSON copy of the current setup is downloaded before saving
+  (on by default), a file like that can be restored later, and after saving the app
+  re-reads the account and verifies order and Home state.
 
-## Build
+## Requirements
+
+- Node.js 22 or newer with npm — only to build from source;
+- Docker with Compose v2 — for the container.
+
+## Build from source
 
 ```sh
-npm install
-npm run build      # dist/
+npm ci
+npm run build      # -> dist/
 npm run dev        # http://127.0.0.1:5173
 ```
 
-`?demo` with `npm run dev` loads a local fixture (Cinemeta manifest + two synthetic
+`?demo` under `npm run dev` loads a local fixture (Cinemeta manifest and two synthetic
 addons) for layout checks; production builds do not include it.
 
-## Run
+Container built locally:
 
-Serve `dist/` over HTTP, e.g. the bundled `compose.yaml` (nginx on port `8095`). Keep it
-LAN-only: the browser session is password-equivalent for the account's addon collection.
-`docker compose up -d --build` builds `sam:1.0.1` and serves it.
+```sh
+docker build -t sam:1.0.2 .
+docker run -d --name sam -p 8095:80 --restart unless-stopped sam:1.0.2
+```
+
+`docker compose up -d --build` does the same and picks up the compose file in this repo.
+
+## Run the published image
+
+Every git tag `v*` publishes a multi-arch image (`linux/amd64`, `linux/arm64`) to the
+GitHub Container Registry:
+
+```sh
+docker run -d --name sam -p 8095:80 --restart unless-stopped ghcr.io/skblacksmith/sam:1.0.2
+```
+
+Or copy `compose.yaml`, adjust the port binding, and run:
+
+```sh
+docker compose up -d
+```
+
+The compose file points at the published image; there is no build step and no Node.js on
+the host. Set `build: .` (and drop `image:`) to build a local checkout instead.
 
 ## Known limits
 
@@ -58,7 +88,10 @@ in the browser.
 
 ## License
 
-MIT — see `LICENSE` and `NOTICE.md`.
+GNU Affero General Public License v3.0 or later — see `LICENSE`. The AGPL covers network
+use: if you run a modified version as a service, you must offer its source to the users of
+that service. Bundled dependencies (Vue, Vite) are MIT and compatible with the AGPL; see
+`NOTICE.md`.
 
 ---
 
