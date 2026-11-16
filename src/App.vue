@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, toRaw } from 'vue'
 import { login, getCollection, setCollection } from './api.js'
-import { addonBoardState, setAddonOnBoard, riskyCatalogs, catalogsOf, isOnBoard, canToggle, toggleKind } from './board.js'
+import { addonBoardState, setAddonOnBoard, setOnBoard, riskyCatalogs, catalogsOf, isOnBoard, canToggle, toggleKind } from './board.js'
 import { resolveLogo, monogram } from './logo.js'
 
 const KEY_STORE = 'sam.authKey'
@@ -19,6 +19,11 @@ const error = ref('')
 const notice = ref('')
 const dragIndex = ref(null)
 const fileInput = ref(null)
+// Board state of every catalog as it was loaded from the account. Catalogs that the
+// addon itself marks with a required extra are hidden on Home by design; this snapshot
+// lets the UI put them back exactly as they were instead of un-hiding everything.
+const origin = reactive({})
+const expanded = reactive({})
 
 const loggedIn = computed(() => key.value.length > 0)
 const dirty = computed(() => addons.value.length > 0 && snapshot() !== baseline.value)
@@ -37,6 +42,23 @@ function snapshot() {
   )
 }
 
+function rememberOrigin(list) {
+  for (const key of Object.keys(origin)) delete origin[key]
+  for (const addon of list) origin[addon.transportUrl] = catalogsOf(addon).map(isOnBoard)
+}
+
+function originFlag(addon, index) {
+  const flags = origin[addon.transportUrl]
+  return flags && index < flags.length ? flags[index] : true
+}
+
+function restoreOrigin(addon) {
+  catalogsOf(addon).forEach((catalog, index) => {
+    if (!canToggle(catalog)) return
+    setOnBoard(catalog, originFlag(addon, index))
+  })
+}
+
 function detectKey() {
   const stored = localStorage.getItem(KEY_STORE) || sessionStorage.getItem(KEY_STORE) || ''
   if (stored) {
@@ -51,6 +73,7 @@ onMounted(() => {
       key.value = 'demo'
       addons.value = clone(demoAddons)
       baseline.value = snapshot()
+      rememberOrigin(addons.value)
       addons.value.forEach((addon) => refreshLogo(addon))
     })
     return
@@ -111,6 +134,7 @@ async function load() {
     if (!result.addons.length) throw new Error('the collection is empty — this does not look like a Stremio account')
     addons.value = clone(result.addons)
     baseline.value = snapshot()
+    rememberOrigin(addons.value)
     result.addons.forEach((addon) => refreshLogo(addon))
     notice.value = `Loaded ${result.addons.length} addons`
   } catch (e) {
@@ -196,7 +220,32 @@ function onDrop(index) {
 
 function toggleBoard(addon) {
   const state = addonBoardState(addon)
-  setAddonOnBoard(addon, state.state === 'hidden')
+  if (state.state === 'hidden') restoreOrigin(addon)
+  else setAddonOnBoard(addon, false)
+}
+
+function catalogKey(catalog, index) {
+  return `${catalog.type}/${catalog.id}#${index}`
+}
+
+function catalogStatus(addon, catalog, index) {
+  const onBoard = isOnBoard(catalog)
+  const was = originFlag(addon, index)
+  if (!canToggle(catalog)) return { tone: 'muted', text: 'no genre/search' }
+  if (!onBoard && !was) return { tone: 'muted', text: 'hidden by addon' }
+  if (!onBoard && was) return { tone: 'warn', text: 'hidden by you' }
+  if (onBoard && !was) return { tone: 'warn', text: 'shown by you' }
+  return { tone: 'ok', text: 'on Home' }
+}
+
+function toggleCatalog(addon, catalog) {
+  if (!canToggle(catalog)) return
+  setOnBoard(catalog, !isOnBoard(catalog))
+}
+
+function toggleExpanded(addon) {
+  const key = addon.transportUrl
+  expanded[key] = !expanded[key]
 }
 
 function stateOf(addon) {
@@ -341,6 +390,9 @@ function flagText(addon) {
                 · will move from Discover to search
               </span>
             </div>
+            <button class="linkish" :aria-expanded="!!expanded[addon.transportUrl]" @click.stop="toggleExpanded(addon)">
+              {{ expanded[addon.transportUrl] ? 'Hide catalogs' : `Show catalogs (${catalogsOf(addon).length})` }}
+            </button>
           </div>
           <label class="check board" :class="{ disabled: stateOf(addon).state === 'none' }">
             <input
@@ -352,6 +404,23 @@ function flagText(addon) {
             />
             hide from Home
           </label>
+          <div v-if="expanded[addon.transportUrl]" class="catalogs">
+            <div v-for="(catalog, ci) in catalogsOf(addon)" :key="catalogKey(catalog, ci)" class="catalog-row">
+              <label class="check" :class="{ disabled: !canToggle(catalog) }">
+                <input
+                  type="checkbox"
+                  :checked="isOnBoard(catalog)"
+                  :disabled="!canToggle(catalog)"
+                  @change="toggleCatalog(addon, catalog)"
+                />
+                <span class="cname">{{ catalog.name || catalog.id }}</span>
+              </label>
+              <span class="ctype">{{ catalog.type }}/{{ catalog.id }}</span>
+              <span class="cstate" :class="catalogStatus(addon, catalog, ci).tone">
+                {{ catalogStatus(addon, catalog, ci).text }}
+              </span>
+            </div>
+          </div>
         </article>
       </section>
 
@@ -359,7 +428,9 @@ function flagText(addon) {
         The checkbox edits the catalog manifest inside the collection: a catalog with a required filter is skipped by the
         Home board but stays in Discover (as a dropdown filter) and in search. Only catalogs that already declare
         <code>genre</code> or <code>search</code> can be hidden; for the rest the checkbox stays disabled — otherwise the
-        addon would start receiving a filter it does not understand.
+        addon would start receiving a filter it does not understand. Rows marked <em>hidden by addon</em> were shipped that
+        way by the addon itself; unchecking an addon restores every catalog to the state it had when the collection was
+        loaded, so the addon's own choices survive.
       </p>
     </template>
 
