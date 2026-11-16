@@ -4,10 +4,11 @@ import { login, getCollection, setCollection } from './api.js'
 import { addonBoardState, setAddonOnBoard, setOnBoard, riskyCatalogs, catalogsOf, isOnBoard, canToggle, toggleKind } from './board.js'
 import { resolveLogo, monogram } from './logo.js'
 
-const KEY_STORE = 'sam.authKey'
+const version = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'
+const KEY_STORE = 'sam.session'
+const LEGACY_KEY_STORE = 'sam.authKey'
 const key = ref('')
 const remember = ref(false)
-const authKeyInput = ref('')
 const email = ref('')
 const password = ref('')
 
@@ -66,6 +67,9 @@ function restoreOrigin(addon) {
 }
 
 function detectKey() {
+  // the manual authKey input is gone; drop anything an older build stored
+  localStorage.removeItem(LEGACY_KEY_STORE)
+  sessionStorage.removeItem(LEGACY_KEY_STORE)
   const stored = localStorage.getItem(KEY_STORE) || sessionStorage.getItem(KEY_STORE) || ''
   if (stored) {
     key.value = stored
@@ -102,18 +106,6 @@ async function doLogin() {
   } finally {
     busy.value = ''
   }
-}
-
-function useKey() {
-  const value = authKeyInput.value.replaceAll('"', '').trim()
-  if (!value) {
-    error.value = 'Empty authKey'
-    return
-  }
-  key.value = value
-  authKeyInput.value = ''
-  keepKey()
-  load()
 }
 
 function keepKey() {
@@ -340,13 +332,8 @@ function flagText(addon) {
         <input v-model="password" type="password" placeholder="Password" autocomplete="current-password" />
         <button class="primary" type="submit">Sign in</button>
       </form>
-      <p class="hint">The password goes straight to <code>api.strem.io</code> and is never stored. Alternatively, paste a session key from
-        <code>web.stremio.com</code>: <code>JSON.parse(localStorage.getItem("profile")).auth.key</code>.</p>
-      <form class="row" @submit.prevent="useKey">
-        <input v-model="authKeyInput" type="password" placeholder="authKey" autocomplete="off" />
-        <button class="ghost" type="submit">Use key</button>
-      </form>
-      <label class="check"><input v-model="remember" type="checkbox" /> remember the key on this device</label>
+      <p class="hint">Your password goes straight to <code>api.strem.io</code> and is never stored by this app.</p>
+      <label class="check"><input v-model="remember" type="checkbox" /> keep me signed in on this device</label>
     </section>
 
     <template v-else>
@@ -443,6 +430,9 @@ function flagText(addon) {
       </p>
     </template>
 
-    <footer class="foot-brand">SAM - Addons Manager for Stremio by CrossNetwork.</footer>
+    <footer class="foot-brand">
+      SAM - Addons Manager for Stremio by CrossNetwork.
+      <span class="ver-tag">v{{ version }}</span>
+    </footer>
   </main>
 </template>

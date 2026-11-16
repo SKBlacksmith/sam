@@ -52,6 +52,27 @@ collection. `docker compose up -d --build` builds `sam:0.1.0` and serves it.
 
 ## License
 
+## Versioning
+
+`1.0.0` is the first stable release. After that:
+
+- `1.0.x` — bug fixes and small corrections;
+- `1.x.0` — new functionality;
+- `x.0.0` — a redesign or a breaking change in how the app works.
+
+## Public instance
+
+The app is static and stores nothing on the server, so it can be exposed behind
+Caddy or nginx. Requirements and limits:
+
+- TLS is mandatory: the sign-in form receives a Stremio password and the session
+  key lives in the browser.
+- CSP and security headers are shipped in `nginx.conf`; HSTS belongs on the proxy.
+- Login rate limiting is **not** implemented in the app. A public deployment must
+  throttle `/` at the proxy; per-IP limits are planned for a later release.
+
+## License
+
 MIT — see `LICENSE` and `NOTICE.md`.
 
 ---

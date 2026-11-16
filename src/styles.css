@@ -86,6 +86,11 @@ h2 { margin: 0 0 12px; font-size: 18px; }
 .cstate.muted { color: #6f6f7e; }
 .cstate.warn { color: var(--accent); }
 
+.ver-tag {
+  margin-left: 8px;
+  opacity: 0.75;
+  font-variant-numeric: tabular-nums;
+}
 .foot-brand {
   margin-top: 30px;
   padding-top: 16px;
