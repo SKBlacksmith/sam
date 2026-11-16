@@ -1,4 +1,12 @@
-# External components and licensing
+# Licensing
+
+SAM - Addons Manager for Stremio
+Copyright (C) 2026 SKBlacksmith
+
+Licensed under the GNU Affero General Public License v3.0 or later. The full text is in
+`LICENSE`; the AGPL network clause (section 13) means that running a modified version as
+a service obliges you to offer its source to that service's users.
+
 
 SAM is licensed under the GNU Affero General Public License v3.0 or later. The AGPL adds
 a network clause: if a modified version is run as a service, its source must be offered
