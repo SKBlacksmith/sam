@@ -10,8 +10,8 @@ straight from the browser (the API allows any origin).
 
 ## What it does
 
-- **Login** with Stremio e-mail/password (`/api/login`) or a pasted session `authKey`
-  (`JSON.parse(localStorage.getItem("profile")).auth.key` on `web.stremio.com`).
+- **Login** with the Stremio e-mail and password (`/api/login`); the session key the API
+  returns stays in this browser and is never sent anywhere else.
 - **Order** — drag rows; the array order in the addon collection is the row order on Home.
 - **Logos** — the stored manifest is a snapshot and often has no `logo`, a dead URL or a
   relative path. Resolution chain: stored logo → live `<transportUrl>/manifest.json` →
@@ -38,9 +38,9 @@ addons) for layout checks; production builds do not include it.
 
 ## Run
 
-Serve `dist/` over HTTP on the LAN, e.g. the bundled `compose.yaml` (nginx on port
-`8095`). Keep it LAN-only: the authKey is password-equivalent for the account's addon
-collection. `docker compose up -d --build` builds `sam:0.1.0` and serves it.
+Serve `dist/` over HTTP, e.g. the bundled `compose.yaml` (nginx on port `8095`). Keep it
+LAN-only: the browser session is password-equivalent for the account's addon collection.
+`docker compose up -d --build` builds `sam:1.0.1` and serves it.
 
 ## Known limits
 
@@ -50,26 +50,11 @@ collection. `docker compose up -d --build` builds `sam:0.1.0` and serves it.
 - Stremio may refresh manifests on login (`addonCollectionGet` with `update: true`);
   the app reports it if the saved board state does not survive the re-read.
 
-## License
-
-## Versioning
-
-`1.0.0` is the first stable release. After that:
-
-- `1.0.x` — bug fixes and small corrections;
-- `1.x.0` — new functionality;
-- `x.0.0` — a redesign or a breaking change in how the app works.
-
 ## Public instance
 
-The app is static and stores nothing on the server, so it can be exposed behind
-Caddy or nginx. Requirements and limits:
-
-- TLS is mandatory: the sign-in form receives a Stremio password and the session
-  key lives in the browser.
-- CSP and security headers are shipped in `nginx.conf`; HSTS belongs on the proxy.
-- Login rate limiting is **not** implemented in the app. A public deployment must
-  throttle `/` at the proxy; per-IP limits are planned for a later release.
+The app is static and stores nothing on the server, so it can sit behind Caddy or nginx.
+TLS is mandatory: the sign-in form receives a Stremio password and the session key lives
+in the browser.
 
 ## License
 

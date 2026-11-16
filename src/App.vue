@@ -325,6 +325,12 @@ function flagText(addon) {
     <p v-if="notice" class="banner ok">{{ notice }}</p>
     <p v-if="busy" class="banner busy">{{ busy }}</p>
 
+    <p v-if="!loggedIn" class="disclaimer">
+      SAM keeps no data on a server. Your Stremio session lives in this browser only — in session storage, or in local
+      storage if you tick “keep me signed in”. No cookies are set; clearing site data signs you out. SAM is not
+      affiliated with Stremio.
+    </p>
+
     <section v-if="!loggedIn" class="card auth">
       <h2>Sign in</h2>
       <form class="row" @submit.prevent="doLogin">

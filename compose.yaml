@@ -1,7 +1,7 @@
 services:
   sam:
     build: .
-    image: sam:1.0.0
+    image: sam:1.0.1
     container_name: sam
     restart: unless-stopped
     ports:

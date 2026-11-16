@@ -91,6 +91,18 @@ h2 { margin: 0 0 12px; font-size: 18px; }
   opacity: 0.75;
   font-variant-numeric: tabular-nums;
 }
+.disclaimer {
+  margin: 0 0 14px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--accent);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .foot-brand {
   margin-top: 30px;
   padding-top: 16px;
