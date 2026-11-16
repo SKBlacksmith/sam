@@ -297,7 +297,7 @@ async function restoreFile(event) {
     if (!list.every((a) => a.transportUrl && a.manifest && a.manifest.name && a.manifest.version)) {
       throw new Error('this is not a Stremio collection')
     }
-    if (!confirm(`Restore from ${file.name}? The current collection will be replaced.`)) return
+    if (!confirm(`Restore from ${file.name}? The current collection will be replaced and no backup is downloaded.`)) return
     busy.value = 'Restoring…'
     await setCollection(key.value, list)
     await load()
