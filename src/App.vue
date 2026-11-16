@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref, toRaw } from 'vue'
 import { login, getCollection, setCollection } from './api.js'
 import { addonBoardState, setAddonOnBoard, riskyCatalogs, catalogsOf, isOnBoard, canToggle, toggleKind } from './board.js'
 import { resolveLogo, monogram } from './logo.js'
@@ -24,7 +24,10 @@ const loggedIn = computed(() => key.value.length > 0)
 const dirty = computed(() => addons.value.length > 0 && snapshot() !== baseline.value)
 
 function clone(value) {
-  return structuredClone(value)
+  // Vue wraps component state in Proxy objects and structuredClone() refuses to clone a
+  // proxy (DataCloneError). toRaw() unwraps the outer proxy; the collection itself is
+  // plain JSON freshly parsed from the API, so the raw value is safely cloneable.
+  return structuredClone(toRaw(value))
 }
 
 function snapshot() {
