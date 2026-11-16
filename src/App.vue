@@ -24,10 +24,11 @@ const loggedIn = computed(() => key.value.length > 0)
 const dirty = computed(() => addons.value.length > 0 && snapshot() !== baseline.value)
 
 function clone(value) {
-  // Vue wraps component state in Proxy objects and structuredClone() refuses to clone a
-  // proxy (DataCloneError). toRaw() unwraps the outer proxy; the collection itself is
-  // plain JSON freshly parsed from the API, so the raw value is safely cloneable.
-  return structuredClone(toRaw(value))
+  // The collection is pure JSON, but Vue wraps state in Proxy objects and those proxies
+  // also end up nested inside arrays (a drag reorder stores proxy elements). structuredClone()
+  // throws DataCloneError on a proxy and toRaw() only unwraps the outer level, so a JSON
+  // round-trip is used instead: it reads through any proxy and keeps the data JSON-shaped.
+  return JSON.parse(JSON.stringify(value))
 }
 
 function snapshot() {
@@ -171,7 +172,7 @@ async function save() {
 
 function move(from, to) {
   if (from === null || to === null || from === to) return
-  const list = addons.value.slice()
+  const list = toRaw(addons.value).slice()
   const [item] = list.splice(from, 1)
   list.splice(to, 0, item)
   addons.value = list
