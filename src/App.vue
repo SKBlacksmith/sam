@@ -24,9 +24,15 @@ const fileInput = ref(null)
 // lets the UI put them back exactly as they were instead of un-hiding everything.
 const origin = reactive({})
 const expanded = reactive({})
+const BACKUP_PREF = 'sam.backup'
+const backupOnSave = ref(localStorage.getItem(BACKUP_PREF) !== 'off')
 
 const loggedIn = computed(() => key.value.length > 0)
 const dirty = computed(() => addons.value.length > 0 && snapshot() !== baseline.value)
+
+function setBackupPref() {
+  localStorage.setItem(BACKUP_PREF, backupOnSave.value ? 'on' : 'off')
+}
 
 function clone(value) {
   // The collection is pure JSON, but Vue wraps state in Proxy objects and those proxies
@@ -162,7 +168,9 @@ async function save() {
   const summary = [
     `Addons: ${addons.value.length}`,
     `Hidden from Home: ${hidden}`,
-    'A copy of the current collection will be downloaded before writing.',
+    backupOnSave.value
+      ? 'A copy of the current collection will be downloaded before writing.'
+      : 'No backup will be downloaded before writing.',
     'Continue?',
   ].join('\n')
   if (!confirm(summary)) return
@@ -171,7 +179,7 @@ async function save() {
   notice.value = ''
   busy.value = 'Saving…'
   try {
-    exportBackup('before')
+    if (backupOnSave.value) exportBackup('before')
     const payload = clone(addons.value)
     await setCollection(key.value, payload)
     const check = await getCollection(key.value)
@@ -291,7 +299,6 @@ async function restoreFile(event) {
     }
     if (!confirm(`Restore from ${file.name}? The current collection will be replaced.`)) return
     busy.value = 'Restoring…'
-    exportBackup('before-restore')
     await setCollection(key.value, list)
     await load()
     notice.value = 'Collection restored from file.'
@@ -350,6 +357,10 @@ function flagText(addon) {
         <button class="ghost" :disabled="!!busy" @click="pickRestore">Restore from file</button>
         <input ref="fileInput" type="file" accept="application/json,.json" hidden @change="restoreFile" />
         <span class="spacer" />
+        <label class="check backup">
+          <input v-model="backupOnSave" type="checkbox" @change="setBackupPref" />
+          Back up the current collection
+        </label>
         <span v-if="dirty" class="dirty">unsaved changes</span>
         <button class="primary" :disabled="!dirty || !!busy" @click="save">Save to Stremio</button>
       </section>
