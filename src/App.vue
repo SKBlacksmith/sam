@@ -132,6 +132,7 @@ async function refreshLogo(addon) {
 }
 
 async function save() {
+  if (busy.value) return
   if (!addons.value.length) return
   const hidden = addons.value.filter((a) => addonBoardState(a).state === 'hidden').length
   const summary = [
@@ -227,6 +228,7 @@ function pickRestore() {
 }
 
 async function restoreFile(event) {
+  if (busy.value) return
   const file = event.target.files?.[0]
   event.target.value = ''
   if (!file) return
@@ -235,7 +237,9 @@ async function restoreFile(event) {
     const parsed = JSON.parse(await file.text())
     const list = Array.isArray(parsed) ? parsed : parsed.addons
     if (!Array.isArray(list) || list.length === 0) throw new Error('the file has no addon array')
-    if (!list.every((a) => a.transportUrl && a.manifest)) throw new Error('this is not a Stremio collection')
+    if (!list.every((a) => a.transportUrl && a.manifest && a.manifest.name && a.manifest.version)) {
+      throw new Error('this is not a Stremio collection')
+    }
     if (!confirm(`Restore from ${file.name}? The current collection will be replaced.`)) return
     busy.value = 'Restoring…'
     exportBackup('before-restore')

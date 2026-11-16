@@ -9,7 +9,11 @@ async function call(method, body) {
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ type: methodName(method), ...body }),
   })
-  if (!resp.ok) throw new Error(`HTTP ${resp.status} on ${method}`)
+  if (!resp.ok) {
+    const body = await resp.text().catch(() => '')
+    const detail = body.trim().slice(0, 200)
+    throw new Error(`HTTP ${resp.status} on ${method}${detail ? ': ' + detail : ''}`)
+  }
   const data = await resp.json()
   if (data.error) throw new Error(`${data.error.code}: ${data.error.message}`)
   if (!data.result) throw new Error(`Unexpected answer from ${method}`)

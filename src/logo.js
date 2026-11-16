@@ -4,6 +4,8 @@
 
 const CACHE_KEY = 'cam.logos.v1'
 const CACHE_TTL = 7 * 24 * 3600 * 1000
+// A failed fetch (offline, CORS, HTML landing page) must not stick for a week.
+const CACHE_FAIL_TTL = 15 * 60 * 1000
 const PROBE_TIMEOUT = 4000
 const FETCH_TIMEOUT = 5000
 
@@ -76,9 +78,11 @@ async function liveManifestLogo(transportUrl) {
   const now = Date.now()
   const cache = readCache()
   const hit = cache[base]
-  if (hit && now - hit.at < CACHE_TTL) return hit.logo
+  const ttl = hit && hit.failed ? CACHE_FAIL_TTL : CACHE_TTL
+  if (hit && now - hit.at < ttl) return hit.logo
 
   let logo = null
+  let resolved = false
   try {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT)
@@ -88,11 +92,17 @@ async function liveManifestLogo(transportUrl) {
     if (resp.ok && /json/i.test(type)) {
       const manifest = await resp.json()
       logo = normalize(manifest.logo, base)
+      resolved = true
     }
   } catch {
     /* CORS, offline, HTML landing page — fall through to favicon */
   }
-  cache[base] = { logo, at: now }
+  cache[base] = { logo, at: now, failed: !resolved }
+  for (const key of Object.keys(cache)) {
+    const entry = cache[key]
+    const age = now - (entry && entry.at ? entry.at : 0)
+    if (age > CACHE_TTL || !entry) delete cache[key]
+  }
   writeCache(cache)
   return logo
 }
