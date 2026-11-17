@@ -18,6 +18,7 @@ const authMode = ref('password')
 const link = ref(null)
 const linkState = ref('')
 const linkError = ref('')
+const linkBusy = ref(false)
 const LINK_POLL_MS = 2500
 const LINK_TTL_MS = 5 * 60 * 1000
 let linkTimer = null
@@ -121,6 +122,7 @@ async function startLink() {
   const generation = linkGeneration
   link.value = null
   linkError.value = ''
+  linkBusy.value = true
   linkState.value = 'Requesting a code…'
   try {
     const created = await createLinkCode()
@@ -133,6 +135,8 @@ async function startLink() {
     if (generation !== linkGeneration) return
     linkState.value = ''
     linkError.value = 'Could not get a code: ' + e.message
+  } finally {
+    if (generation === linkGeneration) linkBusy.value = false
   }
 }
 
@@ -434,9 +438,8 @@ function flagText(addon) {
           Open the link below (or scan the code), confirm on Stremio, and this page picks up the sign-in by itself.
           Nothing is typed here except the code Stremio shows you.
         </p>
-        <div v-if="!link && !linkError" class="link-idle">
-          <button class="primary big" @click="startLink">GET THE CODE</button>
-          <p v-if="!linkState" class="hint">Nothing is requested from Stremio until you press it.</p>
+        <div v-if="!link" class="link-idle">
+          <button class="primary big" :disabled="linkBusy" @click="startLink">GET THE CODE</button>
         </div>
         <div v-if="link" class="link-box">
           <div class="link-code">{{ link.code }}</div>
@@ -446,17 +449,13 @@ function flagText(addon) {
             :href="link.link"
             target="_blank"
             rel="noopener noreferrer"
-            :title="'Open ' + link.link"
+            title="Open the Stremio sign-in page"
           >
             <img class="link-qr" :src="link.qrcode" alt="QR code for the Stremio sign-in link" />
           </a>
-          <a class="link-open" :href="link.link" target="_blank" rel="noopener noreferrer">{{ link.link.replace('https://', '') }}</a>
         </div>
         <p v-if="linkError" class="banner err">{{ linkError }}</p>
         <p v-if="linkState" class="hint">{{ linkState }}</p>
-        <div v-if="link || linkError" class="row">
-          <button class="ghost" @click="startLink">Get a new code</button>
-        </div>
       </template>
 
       <template v-else>
@@ -571,7 +570,7 @@ function flagText(addon) {
     <footer class="foot-brand">
       <span class="foot-copy">© CrossNetwork</span>
       <span class="foot-note">SAM - Addons Manager for Stremio. SAM is not affiliated with Stremio in any way.</span>
-      <a class="foot-link" href="https://github.com/SKBlacksmith/sam" target="_blank" rel="noopener noreferrer">Code</a>
+      <a class="foot-link" href="https://github.com/SKBlacksmith/sam" target="_blank" rel="noopener noreferrer">Source Code</a>
       <span class="ver-tag">v{{ version }}</span>
     </footer>
   </main>

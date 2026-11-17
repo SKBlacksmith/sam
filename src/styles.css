@@ -150,24 +150,26 @@ h2 { margin: 0 0 12px; font-size: 18px; }
 }
 button.big { font-size: 15px; letter-spacing: 0.16em; padding: 15px 34px; }
 .link-box {
+  --tile: min(132px, 26vw);
   display: flex;
   align-items: center;
-  gap: 18px;
+  justify-content: center;
+  gap: 26px;
   flex-wrap: wrap;
   margin: 12px 0;
-  padding: 14px;
+  padding: 18px;
   border: 1px solid var(--line);
   border-radius: 10px;
   background: #0d0d11;
 }
+/* The code is sized so its digits are exactly as tall as the QR tile. */
 .link-code {
-  display: flex;
-  align-items: center;
-  min-height: 116px;
-  font: 700 68px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
-  letter-spacing: 0.1em;
+  font: 800 calc(var(--tile) * 1.35) / 1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.02em;
   color: var(--accent);
   user-select: all;
+  /* digits sit on the baseline, so nudge the ink up to the tile's centre */
+  transform: translateY(-0.03em);
 }
 .link-qr-link {
   display: inline-flex;
@@ -178,17 +180,11 @@ button.big { font-size: 15px; letter-spacing: 0.16em; padding: 15px 34px; }
   outline-offset: 3px;
 }
 .link-qr {
-  width: 116px;
-  height: 116px;
+  width: var(--tile);
+  height: var(--tile);
   padding: 4px;
   border-radius: 8px;
   background: #fff;
-}
-.link-open {
-  color: var(--text);
-  font-size: 13px;
-  text-decoration: underline dotted;
-  word-break: break-all;
 }
 
 input[type="text"], input[type="email"], input[type="password"] {

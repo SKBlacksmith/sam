@@ -1,7 +1,7 @@
 {
   "name": "sam-addons-manager",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.2.1",
   "type": "module",
   "description": "SAM - Addons Manager for Stremio: order, logos and Home visibility",
   "license": "AGPL-3.0-or-later",
