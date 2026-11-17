@@ -134,6 +134,38 @@ h2 { margin: 0 0 12px; font-size: 18px; }
 .auth .row { margin-bottom: 10px; }
 .row { display: flex; gap: 10px; flex-wrap: wrap; }
 
+.link-intro { margin-top: 0; }
+.link-box {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex-wrap: wrap;
+  margin: 12px 0;
+  padding: 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #0d0d11;
+}
+.link-code {
+  font: 700 30px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+  letter-spacing: 0.22em;
+  color: var(--accent);
+  user-select: all;
+}
+.link-qr {
+  width: 116px;
+  height: 116px;
+  padding: 4px;
+  border-radius: 8px;
+  background: #fff;
+}
+.link-open {
+  color: var(--text);
+  font-size: 13px;
+  text-decoration: underline dotted;
+  word-break: break-all;
+}
+
 input[type="text"], input[type="email"], input[type="password"] {
   flex: 1 1 200px;
   min-width: 0;

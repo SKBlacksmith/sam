@@ -1,6 +1,7 @@
 <script setup>
-import { computed, onMounted, reactive, ref, toRaw } from 'vue'
-import { login, getCollection, setCollection } from './api.js'
+import { computed, onMounted, onUnmounted, reactive, ref, toRaw } from 'vue'
+import { login, getCollection, setCollection, createLinkCode, readLinkCode } from './api.js'
+import { loadConfig } from './config.js'
 import { addonBoardState, setAddonFromOrigin, setOnBoard, riskyCatalogs, catalogsOf, isOnBoard, canToggle, blockingExtra, toggleKind } from './board.js'
 import { resolveLogo, monogram } from './logo.js'
 
@@ -11,6 +12,18 @@ const key = ref('')
 const remember = ref(false)
 const email = ref('')
 const password = ref('')
+
+// Sign-in mode comes from config.json, written by the container entrypoint from SAM_AUTH.
+const authMode = ref('password')
+const link = ref(null)
+const linkState = ref('')
+const linkError = ref('')
+const LINK_POLL_MS = 2500
+const LINK_TTL_MS = 5 * 60 * 1000
+let linkTimer = null
+let linkDeadline = 0
+// Bumped on every start/stop, so a poll that lands after "new code" or sign-out is dropped.
+let linkGeneration = 0
 
 const addons = ref([])
 const baseline = ref('')
@@ -70,7 +83,9 @@ function detectKey() {
   }
 }
 
-onMounted(() => {
+onMounted(async () => {
+  const config = await loadConfig()
+  authMode.value = config.auth
   if (import.meta.env.DEV && new URLSearchParams(location.search).has('demo')) {
     import('./fixture.js').then(({ demoAddons }) => {
       key.value = 'demo'
@@ -83,13 +98,73 @@ onMounted(() => {
   }
   detectKey()
   if (key.value) load()
+  else if (authMode.value === 'link') startLink()
 })
+
+onUnmounted(stopLink)
+
+// --- device-link sign-in ---------------------------------------------------------
+// create gives a short code plus a link on link.stremio.com; the person confirms it on
+// stremio.com, and read hands over the same authKey that login returns. Nothing here
+// touches the password, so a public instance never asks for one.
+function stopLink() {
+  if (linkTimer) {
+    clearTimeout(linkTimer)
+    linkTimer = null
+  }
+  linkGeneration += 1
+}
+
+async function startLink() {
+  stopLink()
+  const generation = linkGeneration
+  link.value = null
+  linkError.value = ''
+  linkState.value = 'Requesting a code…'
+  try {
+    const created = await createLinkCode()
+    if (generation !== linkGeneration) return
+    link.value = created
+    linkState.value = 'Waiting for confirmation…'
+    linkDeadline = Date.now() + LINK_TTL_MS
+    linkTimer = setTimeout(() => pollLink(generation, created.code), LINK_POLL_MS)
+  } catch (e) {
+    if (generation !== linkGeneration) return
+    linkState.value = ''
+    linkError.value = 'Could not get a code: ' + e.message
+  }
+}
+
+async function pollLink(generation, code) {
+  if (generation !== linkGeneration) return
+  if (Date.now() > linkDeadline) {
+    linkState.value = 'The code expired. Get a new one.'
+    return
+  }
+  try {
+    const authKey = await readLinkCode(code)
+    if (generation !== linkGeneration) return
+    if (authKey) {
+      linkState.value = 'Signed in.'
+      stopLink()
+      key.value = authKey
+      keepKey()
+      await load()
+      return
+    }
+  } catch (e) {
+    if (generation !== linkGeneration) return
+    // a network hiccup should not kill the flow: report it and keep asking
+    linkState.value = 'Waiting for confirmation… (' + e.message + ')'
+  }
+  linkTimer = setTimeout(() => pollLink(generation, code), LINK_POLL_MS)
+}
 
 async function doLogin() {
   error.value = ''
   busy.value = 'Signing in…'
   try {
-    if (!email.value || !password.value) throw new Error('e-mail and password are required, or paste an authKey')
+    if (!email.value || !password.value) throw new Error('e-mail and password are required')
     key.value = await login(email.value.trim(), password.value)
     password.value = ''
     keepKey()
@@ -107,6 +182,7 @@ function keepKey() {
 }
 
 function forget() {
+  stopLink()
   localStorage.removeItem(KEY_STORE)
   sessionStorage.removeItem(KEY_STORE)
   key.value = ''
@@ -114,6 +190,10 @@ function forget() {
   baseline.value = ''
   notice.value = ''
   error.value = ''
+  link.value = null
+  linkState.value = ''
+  linkError.value = ''
+  if (authMode.value === 'link') startLink()
 }
 
 async function load() {
@@ -332,19 +412,47 @@ function flagText(addon) {
     <p v-if="busy" class="banner busy">{{ busy }}</p>
 
     <p v-if="!loggedIn" class="disclaimer">
-      SAM keeps no data on a server. Your Stremio session lives in this browser only — in session storage, or in local
-      storage if you tick “keep me signed in”. No cookies are set; clearing site data signs you out. SAM is not
-      affiliated with Stremio.
+      <template v-if="authMode === 'link'">
+        SAM keeps no data on a server. The sign-in code is confirmed on stremio.com, so your Stremio password is never
+        entered here; the session key stays in this browser only — in session storage, or in local storage if you tick
+        “keep me signed in”. No cookies are set; clearing site data signs you out. SAM is not affiliated with Stremio.
+      </template>
+      <template v-else>
+        SAM keeps no data on a server. Your Stremio session lives in this browser only — in session storage, or in local
+        storage if you tick “keep me signed in”. No cookies are set; clearing site data signs you out. SAM is not
+        affiliated with Stremio.
+      </template>
     </p>
 
     <section v-if="!loggedIn" class="card auth">
-      <h2>Sign in</h2>
-      <form class="row" @submit.prevent="doLogin">
-        <input v-model="email" type="email" placeholder="Stremio e-mail" autocomplete="username" />
-        <input v-model="password" type="password" placeholder="Password" autocomplete="current-password" />
-        <button class="primary" type="submit">Sign in</button>
-      </form>
-      <p class="hint">Your password goes straight to <code>api.strem.io</code> and is never stored by this app.</p>
+      <h2>{{ authMode === 'link' ? 'Sign in with a code' : 'Sign in' }}</h2>
+
+      <template v-if="authMode === 'link'">
+        <p class="hint link-intro">
+          Open the link below (or scan the code), confirm on Stremio, and this page picks up the sign-in by itself.
+          Nothing is typed here except the code Stremio shows you.
+        </p>
+        <div v-if="link" class="link-box">
+          <div class="link-code">{{ link.code }}</div>
+          <img v-if="link.qrcode" class="link-qr" :src="link.qrcode" alt="QR code for the Stremio sign-in link" />
+          <a class="link-open" :href="link.link" target="_blank" rel="noopener noreferrer">{{ link.link.replace('https://', '') }}</a>
+        </div>
+        <p v-if="linkError" class="banner err">{{ linkError }}</p>
+        <p v-if="linkState" class="hint">{{ linkState }}</p>
+        <div class="row">
+          <button class="ghost" @click="startLink">Get a new code</button>
+        </div>
+      </template>
+
+      <template v-else>
+        <form class="row" @submit.prevent="doLogin">
+          <input v-model="email" type="email" placeholder="Stremio e-mail" autocomplete="username" />
+          <input v-model="password" type="password" placeholder="Password" autocomplete="current-password" />
+          <button class="primary" type="submit">Sign in</button>
+        </form>
+        <p class="hint">Your password goes straight to <code>api.strem.io</code> and is never stored by this app.</p>
+      </template>
+
       <label class="check"><input v-model="remember" type="checkbox" /> keep me signed in on this device</label>
     </section>
 

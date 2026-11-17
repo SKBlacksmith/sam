@@ -43,3 +43,41 @@ export async function setCollection(authKey, addons) {
   if (!result.success) throw new Error('addonCollectionSet did not confirm success')
   return true
 }
+
+// Device-link sign-in: a separate host and API version (stremio-core LinkRequest,
+// VERSION = "v2", GET with query parameters). No credentials are sent to create a code:
+// the person confirms it on stremio.com, and the key is collected by polling read.
+const LINK_API = 'https://link.stremio.com/api/v2/'
+
+async function linkCall(path) {
+  const resp = await fetch(LINK_API + path, { cache: 'no-store' })
+  const data = await resp.json().catch(() => null)
+  if (!data) throw new Error('empty answer from link.stremio.com')
+  return data
+}
+
+export function parseLinkCode(data) {
+  const result = data && data.result
+  if (!result || !result.code || !result.link) {
+    throw new Error((data && data.error && data.error.message) || 'no code in the answer')
+  }
+  return { code: String(result.code), link: String(result.link), qrcode: result.qrcode ? String(result.qrcode) : '' }
+}
+
+// The API answers error 101 for a code that is waiting AND for one that expired, so the
+// caller cannot tell them apart and owns the timeout: null means "keep polling".
+export function parseLinkRead(data) {
+  if (data && data.result && data.result.authKey) return String(data.result.authKey)
+  const error = data && data.error
+  if (error && Number(error.code) === 101) return null
+  throw new Error((error && error.message) || 'unexpected answer from link.stremio.com')
+}
+
+export async function createLinkCode() {
+  return parseLinkCode(await linkCall('create?type=Create'))
+}
+
+export async function readLinkCode(code) {
+  return parseLinkRead(await linkCall('read?type=Read&code=' + encodeURIComponent(code)))
+}
+

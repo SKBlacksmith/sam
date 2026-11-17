@@ -1,12 +1,22 @@
 services:
   sam:
-    image: ghcr.io/skblacksmith/sam:1.0.3
+    image: ghcr.io/skblacksmith/sam:1.1.0
     # To build a local checkout instead of pulling the image, uncomment the next
     # line and remove `image:` above.
     # build: .
     container_name: sam
     restart: unless-stopped
+    environment:
+      # SAM_AUTH picks the sign-in mode; the image is the same for both.
+      #   password — private instance: Stremio e-mail and password (default)
+      #   link     — public instance: device-link code confirmed on stremio.com,
+      #              the password form is not rendered at all
+      # For a public host put SAM_AUTH=link in a .env file next to this file, or run
+      # `SAM_AUTH=link docker compose up -d` once.
+      SAM_AUTH: ${SAM_AUTH:-password}
     ports:
+      # A public instance should bind loopback and sit behind a reverse proxy:
+      #   - "127.0.0.1:8096:80"
       - "8095:80"
     healthcheck:
       test: ["CMD", "wget", "-qO-", "http://127.0.0.1/"]

@@ -10,8 +10,12 @@ straight from the browser (the API allows any origin).
 
 ## What it does
 
-- **Login** with the Stremio e-mail and password (`/api/login`); the session key the API
-  returns stays in this browser and is never sent anywhere else.
+- **Sign-in modes** — the image is one artifact for two instances; `SAM_AUTH` decides how
+  people sign in (see [Sign-in modes](#sign-in-modes)). A public instance never renders a
+  password field.
+- **Login** — Stremio e-mail and password (`/api/login`) on a private instance, or a
+  device-link code on a public one; the session key the API returns stays in this browser and
+  is never sent anywhere else.
 - **Order** — drag rows; the array order in the addon collection is the row order on Home.
 - **Logos** — the stored manifest is a snapshot and often has no `logo`, a dead URL or a
   relative path. Resolution chain: stored logo → live `<transportUrl>/manifest.json` →
@@ -31,6 +35,43 @@ straight from the browser (the API allows any origin).
   (on by default), a file like that can be restored later, and after saving the app
   re-reads the account and verifies order and Home state.
 
+## Sign-in modes
+
+One image runs both instances. `SAM_AUTH` is read at container start and written into
+`config.json`, which the app fetches before it draws the sign-in screen — nothing is rebuilt.
+
+- **`password`** (default) — the app asks for the Stremio e-mail and password and sends them
+  straight to `api.strem.io`; the session key stays in the browser. Meant for a private,
+  LAN-only instance: that key is as good as the account password for the addon API.
+- **`link`** — device-link sign-in. The app asks Stremio for a short code
+  (`link.stremio.com/api/v2/create`) and shows the code, the link and a QR code; the person
+  confirms it on stremio.com, and the app collects the session key by polling
+  (`link.stremio.com/api/v2/read`). No password field is rendered at all, so a public
+  instance never asks for a Stremio password.
+
+```sh
+# private instance (default)
+docker run -d --name sam -p 8095:80 ghcr.io/skblacksmith/sam:1.1.0
+
+# public instance: same image, different mode, loopback behind a reverse proxy
+docker run -d --name sam -p 127.0.0.1:8096:80 -e SAM_AUTH=link ghcr.io/skblacksmith/sam:1.1.0
+```
+
+With compose, set it in the service environment:
+
+```yaml
+environment:
+  SAM_AUTH: link
+```
+
+Without Docker, serve `dist/` with any static server and write `config.json` next to
+`index.html` (`{"auth":"link"}` or `{"auth":"password"}`); an invalid or missing file falls
+back to `password`.
+
+Both modes end with the same session key, so ordering, logos, Home visibility, backup and
+restore behave identically. The API answers "not confirmed yet" and "expired" with the same
+error, so the page waits five minutes and then offers a new code.
+
 ## Requirements
 
 - Node.js 22 or newer with npm — only to build from source;
@@ -45,13 +86,14 @@ npm run dev        # http://127.0.0.1:5173
 ```
 
 `?demo` under `npm run dev` loads a local fixture (the Cinemeta manifest plus synthetic
-addons covering every catalog state) for layout checks; production builds do not include it.
+addons covering every catalog state) for layout checks, and `?auth=link` previews the public
+sign-in mode; production builds include neither.
 
 Container built locally:
 
 ```sh
-docker build -t sam:1.0.3 .
-docker run -d --name sam -p 8095:80 --restart unless-stopped sam:1.0.3
+docker build -t sam:1.1.0 .
+docker run -d --name sam -p 8095:80 --restart unless-stopped sam:1.1.0
 ```
 
 `docker compose up -d --build` does the same and picks up the compose file in this repo.
@@ -62,7 +104,7 @@ Every git tag `v*` publishes a multi-arch image (`linux/amd64`, `linux/arm64`) t
 GitHub Container Registry:
 
 ```sh
-docker run -d --name sam -p 8095:80 --restart unless-stopped ghcr.io/skblacksmith/sam:1.0.3
+docker run -d --name sam -p 8095:80 --restart unless-stopped ghcr.io/skblacksmith/sam:1.1.0
 ```
 
 Or copy `compose.yaml`, adjust the port binding, and run:
