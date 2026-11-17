@@ -39,4 +39,39 @@ const searchOnly = {
   flags: { official: false, protected: false },
 }
 
-export const demoAddons = [cinemetaAddon, plain, searchOnly]
+const allHidden = {
+  transportUrl: 'https://example.com/hidden/',
+  manifest: {
+    id: 'org.example.hidden',
+    version: '2.0.0',
+    name: 'Every catalog hidden by the addon',
+    description: 'Both catalogs require genre — the state a save from SAM leaves behind',
+    types: ['movie'],
+    resources: ['catalog'],
+    catalogs: [
+      { type: 'movie', id: 'new', name: 'New', extra: [{ name: 'genre', isRequired: true, options: ['2026'] }] },
+      { type: 'movie', id: 'year', name: 'By year', extra: [{ name: 'genre', isRequired: true, options: ['2025'] }] },
+    ],
+    behaviorHints: {},
+  },
+  flags: { official: false, protected: false },
+}
+
+const blocked = {
+  transportUrl: 'https://example.com/blocked/',
+  manifest: {
+    id: 'org.example.blocked',
+    version: '1.0.0',
+    name: 'Blocked by another filter',
+    description: 'skip is required, so genre cannot put the catalog back on the board',
+    types: ['series'],
+    resources: ['catalog'],
+    catalogs: [
+      { type: 'series', id: 'paged', name: 'Paged', extra: [{ name: 'skip', isRequired: true }, { name: 'genre', options: ['Drama'] }] },
+    ],
+    behaviorHints: {},
+  },
+  flags: { official: false, protected: false },
+}
+
+export const demoAddons = [cinemetaAddon, plain, searchOnly, allHidden, blocked]

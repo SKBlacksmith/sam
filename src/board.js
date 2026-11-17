@@ -39,8 +39,21 @@ export function toggleFieldName(catalog) {
   return null
 }
 
+// Another required extra keeps the catalog off the board no matter what we do to
+// genre/search, so flipping the toggle would be a lie: report it and leave the
+// checkbox alone.
+export function blockingExtra(catalog) {
+  const name = toggleFieldName(catalog)
+  if (!name) return null
+  const extras = Array.isArray(catalog.extra) ? catalog.extra : []
+  const other = extras.find((e) => e && e.name !== name && e.isRequired === true)
+  if (other) return other.name
+  const required = Array.isArray(catalog.extraRequired) ? catalog.extraRequired : []
+  return required.find((n) => n !== name) || null
+}
+
 export function canToggle(catalog) {
-  return toggleFieldName(catalog) !== null
+  return toggleFieldName(catalog) !== null && blockingExtra(catalog) === null
 }
 
 // A required *genre* with no options means the client has nothing to send as a
@@ -62,20 +75,28 @@ export function toggleKind(catalog) {
 }
 
 export function setOnBoard(catalog, onBoard) {
+  // A blocked catalog cannot be moved on or off the board, so leave its manifest alone
+  // instead of writing a flag that changes nothing.
+  if (!canToggle(catalog)) return false
   const name = toggleFieldName(catalog)
-  if (!name) return false
+  const before = isOnBoard(catalog)
   const extras = Array.isArray(catalog.extra) ? catalog.extra : []
   const field = extras.find((e) => e && e.name === name)
   if (field) {
     if (onBoard) delete field.isRequired
     else field.isRequired = true
   }
-  if (Array.isArray(catalog.extraSupported) && catalog.extraSupported.length > 0) {
-    const required = Array.isArray(catalog.extraRequired) ? catalog.extraRequired.slice() : []
-    const without = required.filter((n) => n !== name)
+  if (Array.isArray(catalog.extraRequired)) {
+    const without = catalog.extraRequired.filter((n) => n !== name)
     catalog.extraRequired = onBoard ? without : [...without, name]
+  } else if (Array.isArray(catalog.extraSupported) && catalog.extraSupported.length > 0) {
+    // legacy shape: extraSupported without extraRequired
+    catalog.extraRequired = onBoard ? [] : [name]
   }
-  return true
+  // The caller needs to know whether the board actually changed: a catalog that
+  // keeps another required extra looks identical before and after, and the UI must
+  // not report a change it did not make.
+  return isOnBoard(catalog) !== before
 }
 
 // Per-addon state for the checkbox: 'board' (all rows shown), 'hidden' (all
@@ -98,6 +119,23 @@ export function setAddonOnBoard(addon, onBoard) {
     if (setOnBoard(catalog, onBoard)) changed = true
   }
   return changed
+}
+
+// The addon checkbox. Checking it hides every catalog; unchecking puts back the
+// catalogs the addon itself shipped hidden (`origin`, the board state at load).
+// When nothing was hidden by the addon — the addon was already fully off the board,
+// which is exactly what a save from this app leaves behind — restoring is a no-op,
+// and the click has to mean "show every catalog" instead. Without that fallback the
+// checkbox snapped back and Save never lit up.
+export function setAddonFromOrigin(addon, originFlags) {
+  if (addonBoardState(addon).state !== 'hidden') return setAddonOnBoard(addon, false)
+  let restored = false
+  catalogsOf(addon).forEach((catalog, index) => {
+    if (!canToggle(catalog)) return
+    const was = originFlags && index < originFlags.length ? originFlags[index] : true
+    if (setOnBoard(catalog, was)) restored = true
+  })
+  return restored || setAddonOnBoard(addon, true)
 }
 
 export function riskyCatalogs(addon) {

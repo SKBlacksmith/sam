@@ -24,7 +24,9 @@ straight from the browser (the API allows any origin).
   checkbox stays disabled instead of inventing a filter the addon does not understand.
 - **Per-catalog list** — expand an addon to see every catalog and its state (`on Home`,
   `hidden by addon`, `hidden by you`, `shown by you`); unchecking the addon returns each
-  catalog to the state it had before you touched it.
+  catalog to the state it had before you touched it. When the addon was already fully off
+  the board at load time — the state a save from SAM leaves behind — there is nothing to
+  restore, so unchecking shows all of its catalogs.
 - **Safety** — an optional JSON copy of the current setup is downloaded before saving
   (on by default), a file like that can be restored later, and after saving the app
   re-reads the account and verifies order and Home state.
@@ -42,14 +44,14 @@ npm run build      # -> dist/
 npm run dev        # http://127.0.0.1:5173
 ```
 
-`?demo` under `npm run dev` loads a local fixture (Cinemeta manifest and two synthetic
-addons) for layout checks; production builds do not include it.
+`?demo` under `npm run dev` loads a local fixture (the Cinemeta manifest plus synthetic
+addons covering every catalog state) for layout checks; production builds do not include it.
 
 Container built locally:
 
 ```sh
-docker build -t sam:1.0.2 .
-docker run -d --name sam -p 8095:80 --restart unless-stopped sam:1.0.2
+docker build -t sam:1.0.3 .
+docker run -d --name sam -p 8095:80 --restart unless-stopped sam:1.0.3
 ```
 
 `docker compose up -d --build` does the same and picks up the compose file in this repo.
@@ -60,7 +62,7 @@ Every git tag `v*` publishes a multi-arch image (`linux/amd64`, `linux/arm64`) t
 GitHub Container Registry:
 
 ```sh
-docker run -d --name sam -p 8095:80 --restart unless-stopped ghcr.io/skblacksmith/sam:1.0.2
+docker run -d --name sam -p 8095:80 --restart unless-stopped ghcr.io/skblacksmith/sam:1.0.3
 ```
 
 Or copy `compose.yaml`, adjust the port binding, and run:
@@ -77,6 +79,8 @@ the host. Set `build: .` (and drop `image:`) to build a local checkout instead.
 - The Home toggle edits manifests, not addon servers: streams still come from the addon.
 - A required `genre` with an empty `options` list may break that catalog — the UI warns.
 - `search`-only catalogs leave Discover and stay reachable through Search.
+- A catalog marked `needs …` keeps another required filter (`skip`, ids): `genre`/`search`
+  cannot override it, so the catalog stays off the board and its checkbox is disabled.
 - Stremio may refresh manifests on login (`addonCollectionGet` with `update: true`);
   the app reports it if the saved board state does not survive the re-read.
 

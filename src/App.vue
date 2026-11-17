@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, reactive, ref, toRaw } from 'vue'
 import { login, getCollection, setCollection } from './api.js'
-import { addonBoardState, setAddonOnBoard, setOnBoard, riskyCatalogs, catalogsOf, isOnBoard, canToggle, toggleKind } from './board.js'
+import { addonBoardState, setAddonFromOrigin, setOnBoard, riskyCatalogs, catalogsOf, isOnBoard, canToggle, blockingExtra, toggleKind } from './board.js'
 import { resolveLogo, monogram } from './logo.js'
 
 const version = typeof __APP_VERSION__ === 'string' ? __APP_VERSION__ : 'dev'
@@ -57,13 +57,6 @@ function rememberOrigin(list) {
 function originFlag(addon, index) {
   const flags = origin[addon.transportUrl]
   return flags && index < flags.length ? flags[index] : true
-}
-
-function restoreOrigin(addon) {
-  catalogsOf(addon).forEach((catalog, index) => {
-    if (!canToggle(catalog)) return
-    setOnBoard(catalog, originFlag(addon, index))
-  })
 }
 
 function detectKey() {
@@ -216,10 +209,19 @@ function onDrop(index) {
   dragIndex.value = null
 }
 
-function toggleBoard(addon) {
-  const state = addonBoardState(addon)
-  if (state.state === 'hidden') restoreOrigin(addon)
-  else setAddonOnBoard(addon, false)
+// A controlled checkbox does not re-render when a click changes nothing, so the tick
+// the browser drew stays on screen and the row lies about its state. Put the DOM back
+// in line with the model after every click.
+function syncBox(event, state) {
+  const box = event && event.target
+  if (!box) return
+  box.checked = state === 'hidden'
+  box.indeterminate = state === 'partial'
+}
+
+function toggleBoard(addon, event) {
+  setAddonFromOrigin(addon, origin[addon.transportUrl])
+  syncBox(event, addonBoardState(addon).state)
 }
 
 function catalogKey(catalog, index) {
@@ -227,6 +229,8 @@ function catalogKey(catalog, index) {
 }
 
 function catalogStatus(addon, catalog, index) {
+  const blocked = blockingExtra(catalog)
+  if (blocked) return { tone: 'muted', text: `needs ${blocked}` }
   const onBoard = isOnBoard(catalog)
   const was = originFlag(addon, index)
   if (!canToggle(catalog)) return { tone: 'muted', text: 'no genre/search' }
@@ -236,9 +240,11 @@ function catalogStatus(addon, catalog, index) {
   return { tone: 'ok', text: 'on Home' }
 }
 
-function toggleCatalog(addon, catalog) {
+function toggleCatalog(addon, catalog, event) {
   if (!canToggle(catalog)) return
   setOnBoard(catalog, !isOnBoard(catalog))
+  const box = event && event.target
+  if (box) box.checked = isOnBoard(catalog)
 }
 
 function toggleExpanded(addon) {
@@ -402,7 +408,7 @@ function flagText(addon) {
               :checked="stateOf(addon).state === 'hidden'"
               :indeterminate.prop="stateOf(addon).state === 'partial'"
               :disabled="stateOf(addon).state === 'none'"
-              @change="toggleBoard(addon)"
+              @change="toggleBoard(addon, $event)"
             />
             hide from Home
           </label>
@@ -413,7 +419,7 @@ function flagText(addon) {
                   type="checkbox"
                   :checked="isOnBoard(catalog)"
                   :disabled="!canToggle(catalog)"
-                  @change="toggleCatalog(addon, catalog)"
+                  @change="toggleCatalog(addon, catalog, $event)"
                 />
                 <span class="cname">{{ catalog.name || catalog.id }}</span>
               </label>
@@ -430,9 +436,12 @@ function flagText(addon) {
         The checkbox edits the catalog manifest stored with the addon: a catalog with a required filter is skipped by the
         Home board but stays in Discover (as a dropdown filter) and in search. Only catalogs that already declare
         <code>genre</code> or <code>search</code> can be hidden; for the rest the checkbox stays disabled — otherwise the
-        addon would start receiving a filter it does not understand. Rows marked <em>hidden by addon</em> were shipped that
-        way by the addon itself; unchecking an addon restores every catalog to the state it had when the addons were
-        loaded, so the addon's own choices survive.
+        addon would start receiving a filter it does not understand, and a row marked <em>needs …</em> keeps another
+        required filter that decides the board on its own. Rows marked <em>hidden by addon</em> were shipped that way by
+        the addon itself; unchecking an addon restores every catalog to the state it had when the addons were loaded, so
+        the addon's own choices survive. If the addon was already fully off the board at that moment — which is what a
+        save from this app leaves behind — unchecking shows all of its catalogs instead, since there is nothing left to
+        restore.
       </p>
     </template>
 

@@ -1,6 +1,6 @@
 services:
   sam:
-    image: ghcr.io/skblacksmith/sam:1.0.2
+    image: ghcr.io/skblacksmith/sam:1.0.3
     # To build a local checkout instead of pulling the image, uncomment the next
     # line and remove `image:` above.
     # build: .
