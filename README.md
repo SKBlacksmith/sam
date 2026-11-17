@@ -72,6 +72,12 @@ Both modes end with the same session key, so ordering, logos, Home visibility, b
 restore behave identically. The API answers "not confirmed yet" and "expired" with the same
 error, so the page waits five minutes and then offers a new code.
 
+**Logos and the visitor's network.** A logo is resolved by asking the addon's own host for
+`manifest.json` and `favicon.ico`. On a public instance that would mean a page served from the
+internet reaching into private addresses, which browsers now block behind a "local network
+access" prompt. So a public page never probes a private host: an addon on the LAN shows its
+monogram instead. On a LAN instance the page is private itself and LAN logos resolve as before.
+
 ## Requirements
 
 - Node.js 22 or newer with npm — only to build from source;

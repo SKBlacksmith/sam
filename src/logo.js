@@ -54,6 +54,44 @@ export function hostOf(transportUrl) {
   }
 }
 
+// Chrome asks the visitor for "local network access" when a page served from the public
+// internet reaches a private address. It is right to ask: an addon list is not a reason to
+// touch the visitor's LAN. So a private host is only probed when this page is private too —
+// on the LAN instance logos from LAN addons still resolve, on the public one they fall back
+// to the monogram and the prompt never appears.
+export function isPrivateHost(hostname) {
+  const host = String(hostname || '').trim().toLowerCase().replace(/^\[|\]$/g, '')
+  if (!host) return false
+  if (host === 'localhost' || host.endsWith('.localhost') || host.endsWith('.local')) return true
+  if (host === '::1' || host === '::') return true
+  if (/^f[cd][0-9a-f]{2}:/.test(host)) return true // fc00::/7 unique local
+  if (/^fe[89ab][0-9a-f]:/.test(host)) return true // fe80::/10 link local
+  const v4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+  if (!v4) return false
+  const a = Number(v4[1])
+  const b = Number(v4[2])
+  if (a === 0 || a === 10 || a === 127) return true
+  if (a === 192 && b === 168) return true
+  if (a === 172 && b >= 16 && b <= 31) return true
+  if (a === 169 && b === 254) return true // link local
+  if (a === 100 && b >= 64 && b <= 127) return true // carrier NAT
+  return false
+}
+
+function pageIsPrivate() {
+  return isPrivateHost(location.hostname)
+}
+
+// True when this URL lives on the LAN while the page itself does not.
+function offLimits(url) {
+  if (!url) return false
+  try {
+    return isPrivateHost(new URL(url).hostname) && !pageIsPrivate()
+  } catch {
+    return false
+  }
+}
+
 function probe(url) {
   return new Promise((resolve) => {
     if (!url) return resolve(false)
@@ -110,13 +148,16 @@ async function liveManifestLogo(transportUrl) {
 export async function resolveLogo(addon) {
   const candidates = []
   const stored = normalize(addon?.manifest?.logo, manifestBase(addon?.transportUrl))
-  if (stored) candidates.push(stored)
+  if (stored && !offLimits(stored)) candidates.push(stored)
 
-  const live = await liveManifestLogo(addon?.transportUrl)
-  if (live && !candidates.includes(live)) candidates.push(live)
+  const transport = normalize(addon?.transportUrl)
+  if (!offLimits(transport)) {
+    const live = await liveManifestLogo(addon?.transportUrl)
+    if (live && !offLimits(live) && !candidates.includes(live)) candidates.push(live)
+  }
 
   const host = hostOf(addon?.transportUrl)
-  if (host) candidates.push(host + '/favicon.ico')
+  if (host && !offLimits(host)) candidates.push(host + '/favicon.ico')
 
   for (const candidate of candidates) {
     if (await probe(candidate)) return candidate
