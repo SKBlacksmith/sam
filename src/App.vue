@@ -98,7 +98,8 @@ onMounted(async () => {
   }
   detectKey()
   if (key.value) load()
-  else if (authMode.value === 'link') startLink()
+  // No code is requested on load: a visitor who only looks at the page sends nothing to
+  // Stremio. The sign-in card shows a button instead.
 })
 
 onUnmounted(stopLink)
@@ -138,7 +139,9 @@ async function startLink() {
 async function pollLink(generation, code) {
   if (generation !== linkGeneration) return
   if (Date.now() > linkDeadline) {
-    linkState.value = 'The code expired. Get a new one.'
+    // the code is dead: drop it and give the button back instead of showing a stale code
+    link.value = null
+    linkState.value = 'The code expired. Press the button for a new one.'
     return
   }
   try {
@@ -415,12 +418,11 @@ function flagText(addon) {
       <template v-if="authMode === 'link'">
         SAM keeps no data on a server. The sign-in code is confirmed on stremio.com, so your Stremio password is never
         entered here; the session key stays in this browser only — in session storage, or in local storage if you tick
-        “keep me signed in”. No cookies are set; clearing site data signs you out. SAM is not affiliated with Stremio.
+        “keep me signed in”. No cookies are set; clearing site data signs you out.
       </template>
       <template v-else>
         SAM keeps no data on a server. Your Stremio session lives in this browser only — in session storage, or in local
-        storage if you tick “keep me signed in”. No cookies are set; clearing site data signs you out. SAM is not
-        affiliated with Stremio.
+        storage if you tick “keep me signed in”. No cookies are set; clearing site data signs you out.
       </template>
     </p>
 
@@ -432,14 +434,27 @@ function flagText(addon) {
           Open the link below (or scan the code), confirm on Stremio, and this page picks up the sign-in by itself.
           Nothing is typed here except the code Stremio shows you.
         </p>
+        <div v-if="!link && !linkError" class="link-idle">
+          <button class="primary big" @click="startLink">GET THE CODE</button>
+          <p v-if="!linkState" class="hint">Nothing is requested from Stremio until you press it.</p>
+        </div>
         <div v-if="link" class="link-box">
           <div class="link-code">{{ link.code }}</div>
-          <img v-if="link.qrcode" class="link-qr" :src="link.qrcode" alt="QR code for the Stremio sign-in link" />
+          <a
+            v-if="link.qrcode"
+            class="link-qr-link"
+            :href="link.link"
+            target="_blank"
+            rel="noopener noreferrer"
+            :title="'Open ' + link.link"
+          >
+            <img class="link-qr" :src="link.qrcode" alt="QR code for the Stremio sign-in link" />
+          </a>
           <a class="link-open" :href="link.link" target="_blank" rel="noopener noreferrer">{{ link.link.replace('https://', '') }}</a>
         </div>
         <p v-if="linkError" class="banner err">{{ linkError }}</p>
         <p v-if="linkState" class="hint">{{ linkState }}</p>
-        <div class="row">
+        <div v-if="link || linkError" class="row">
           <button class="ghost" @click="startLink">Get a new code</button>
         </div>
       </template>
@@ -554,7 +569,9 @@ function flagText(addon) {
     </template>
 
     <footer class="foot-brand">
-      SAM - Addons Manager for Stremio by CrossNetwork.
+      <span class="foot-copy">© CrossNetwork</span>
+      <span class="foot-note">SAM - Addons Manager for Stremio. SAM is not affiliated with Stremio in any way.</span>
+      <a class="foot-link" href="https://github.com/SKBlacksmith/sam" target="_blank" rel="noopener noreferrer">Code</a>
       <span class="ver-tag">v{{ version }}</span>
     </footer>
   </main>

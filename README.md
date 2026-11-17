@@ -43,10 +43,11 @@ One image runs both instances. `SAM_AUTH` is read at container start and written
 - **`password`** (default) — the app asks for the Stremio e-mail and password and sends them
   straight to `api.strem.io`; the session key stays in the browser. Meant for a private,
   LAN-only instance: that key is as good as the account password for the addon API.
-- **`link`** — device-link sign-in. The app asks Stremio for a short code
-  (`link.stremio.com/api/v2/create`) and shows the code, the link and a QR code; the person
-  confirms it on stremio.com, and the app collects the session key by polling
-  (`link.stremio.com/api/v2/read`). No password field is rendered at all, so a public
+- **`link`** — device-link sign-in. Nothing is requested from Stremio on page load: the card
+  shows a single **GET THE CODE** button, and only pressing it calls
+  `link.stremio.com/api/v2/create`. The answer is shown as the code, a clickable QR and the
+  link; the person confirms it on stremio.com, and the app collects the session key by
+  polling (`link.stremio.com/api/v2/read`). No password field is rendered at all, so a public
   instance never asks for a Stremio password.
 
 ```sh
