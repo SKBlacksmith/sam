@@ -126,7 +126,8 @@ the host. Set `build: .` (and drop `image:`) to build a local checkout instead.
 
 ## Public instance
 
-The app is static and stores nothing on the server, so it can sit behind Caddy or nginx.
+The app is static and stores nothing on the server, so it can sit behind a reverse proxy such as
+Caddy or Nginx.
 TLS is mandatory: the sign-in form receives a Stremio password and the session key lives
 in the browser.
 
