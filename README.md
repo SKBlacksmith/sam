@@ -1,9 +1,8 @@
 # SAM — Addons Manager for Stremio
 
-SAM is a small, self-hosted web app for a Stremio account: reorder installed addons,
-repair broken addon icons, and hide an addon's catalogs from the Home board while
-keeping them in Discover. The letter mark and footer are part of the brand:
-`SAM - Addons Manager for Stremio by CrossNetwork.`
+SAM is a small, self-hosted web app for a Stremio account: reorder installed addons and
+hide an addon's catalogs from the Home board while keeping them in Discover. The letter
+mark and footer are part of the brand: `SAM - Addons Manager for Stremio by CrossNetwork.`
 
 No backend, no telemetry, no external CDNs: a static SPA talking to `api.strem.io`
 straight from the browser (the API allows any origin).
@@ -17,10 +16,6 @@ straight from the browser (the API allows any origin).
   device-link code on a public one; the session key the API returns stays in this browser and
   is never sent anywhere else.
 - **Order** — drag rows; the array order in the addon collection is the row order on Home.
-- **Logos** — the stored manifest is a snapshot and often has no `logo`, a dead URL or a
-  relative path. Resolution chain: stored logo → live `<transportUrl>/manifest.json` →
-  host `favicon.ico` → monogram tile. Hits are cached for a week in `localStorage`,
-  failures for 15 minutes so a fixed icon shows up without waiting.
 - **Hide from Home** — a per-addon checkbox. It flips `isRequired` on an existing
   `genre` (preferred) or `search` extra of each catalog. A catalog with a required extra
   is never requested with an empty extra, so the board skips it while Discover keeps it
@@ -69,15 +64,9 @@ Without Docker, serve `dist/` with any static server and write `config.json` nex
 `index.html` (`{"auth":"link"}` or `{"auth":"password"}`); an invalid or missing file falls
 back to `password`.
 
-Both modes end with the same session key, so ordering, logos, Home visibility, backup and
-restore behave identically. The API answers "not confirmed yet" and "expired" with the same
-error, so the page waits five minutes and then offers a new code.
-
-**Logos and the visitor's network.** A logo is resolved by asking the addon's own host for
-`manifest.json` and `favicon.ico`. On a public instance that would mean a page served from the
-internet reaching into private addresses, which browsers now block behind a "local network
-access" prompt. So a public page never probes a private host: an addon on the LAN shows its
-monogram instead. On a LAN instance the page is private itself and LAN logos resolve as before.
+Both modes end with the same session key, so ordering, Home visibility, backup and restore
+behave identically. The API answers "not confirmed yet" and "expired" with the same error, so
+the page waits five minutes and then offers a new code.
 
 ## Requirements
 
@@ -133,6 +122,8 @@ the host. Set `build: .` (and drop `image:`) to build a local checkout instead.
 - `search`-only catalogs leave Discover and stay reachable through Search.
 - A catalog marked `needs …` keeps another required filter (`skip`, ids): `genre`/`search`
   cannot override it, so the catalog stays off the board and its checkbox is disabled.
+- On a public instance the page never contacts an addon host on a private network, so an
+  addon hosted on the visitor's LAN shows its monogram instead of its icon.
 - Stremio may refresh manifests on login (`addonCollectionGet` with `update: true`);
   the app reports it if the saved board state does not survive the re-read.
 
