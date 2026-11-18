@@ -52,10 +52,10 @@ One image runs both instances. `SAM_AUTH` is read at container start and written
 
 ```sh
 # private instance (default)
-docker run -d --name sam -p 8095:80 ghcr.io/skblacksmith/sam:1.1.0
+docker run -d --name sam -p 8095:80 ghcr.io/skblacksmith/sam:latest
 
 # public instance: same image, different mode, loopback behind a reverse proxy
-docker run -d --name sam -p 127.0.0.1:8096:80 -e SAM_AUTH=link ghcr.io/skblacksmith/sam:1.1.0
+docker run -d --name sam -p 127.0.0.1:8096:80 -e SAM_AUTH=link ghcr.io/skblacksmith/sam:latest
 ```
 
 With compose, set it in the service environment:
@@ -99,8 +99,8 @@ sign-in mode; production builds include neither.
 Container built locally:
 
 ```sh
-docker build -t sam:1.1.0 .
-docker run -d --name sam -p 8095:80 --restart unless-stopped sam:1.1.0
+docker build -t sam:latest .
+docker run -d --name sam -p 8095:80 --restart unless-stopped sam:latest
 ```
 
 `docker compose up -d --build` does the same and picks up the compose file in this repo.
@@ -111,8 +111,11 @@ Every git tag `v*` publishes a multi-arch image (`linux/amd64`, `linux/arm64`) t
 GitHub Container Registry:
 
 ```sh
-docker run -d --name sam -p 8095:80 --restart unless-stopped ghcr.io/skblacksmith/sam:1.1.0
+docker run -d --name sam -p 8095:80 --restart unless-stopped ghcr.io/skblacksmith/sam:latest
 ```
+
+`latest` moves to the newest release on every tag; pin a version tag instead when you need one
+frozen build.
 
 Or copy `compose.yaml`, adjust the port binding, and run:
 
