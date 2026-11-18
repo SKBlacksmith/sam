@@ -7,7 +7,7 @@ RUN npm run build
 
 FROM nginx:stable-alpine
 LABEL org.opencontainers.image.source="https://github.com/SKBlacksmith/sam" \
-      org.opencontainers.image.description="SAM - Addons Manager for Stremio: order, logos and Home visibility" \
+      org.opencontainers.image.description="SAM - Addons Manager for Stremio: order and Home visibility" \
       org.opencontainers.image.licenses="AGPL-3.0-or-later"
 COPY --from=build /app/dist /usr/share/nginx/html
 COPY nginx.conf /etc/nginx/conf.d/default.conf

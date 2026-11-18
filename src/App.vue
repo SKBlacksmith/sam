@@ -408,7 +408,7 @@ function flagText(addon) {
         <span class="mark" aria-hidden="true">SAM</span>
         <div>
           <h1>SAM</h1>
-          <p class="sub">Order, logos and Home visibility for your Stremio addons. Changes are written straight to your account.</p>
+          <p class="sub">Order and Home visibility for your Stremio addons. Changes are written straight to your account.</p>
         </div>
       </div>
       <button v-if="loggedIn" class="ghost" @click="forget">Sign out</button>
@@ -435,8 +435,8 @@ function flagText(addon) {
 
       <template v-if="authMode === 'link'">
         <p class="hint link-intro">
-          Open the link below (or scan the code), confirm on Stremio, and this page picks up the sign-in by itself.
-          Nothing is typed here except the code Stremio shows you.
+          Press GET THE CODE, then scan or click the QR code and confirm on Stremio; this page picks up the
+          sign-in by itself.
         </p>
         <div v-if="!link" class="link-idle">
           <button class="primary big" :disabled="linkBusy" @click="startLink">GET THE CODE</button>
