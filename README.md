@@ -1,8 +1,7 @@
 # SAM — Addons Manager for Stremio
 
 SAM is a small, self-hosted web app for a Stremio account: reorder installed addons and
-hide an addon's catalogs from the Home board while keeping them in Discover. The letter
-mark and footer are part of the brand: `SAM - Addons Manager for Stremio by CrossNetwork.`
+hide an addon's catalogs from the Home board while keeping them in Discover.
 
 No backend, no telemetry, no external CDNs: a static SPA talking to `api.strem.io`
 straight from the browser (the API allows any origin).
@@ -122,8 +121,6 @@ the host. Set `build: .` (and drop `image:`) to build a local checkout instead.
 - `search`-only catalogs leave Discover and stay reachable through Search.
 - A catalog marked `needs …` keeps another required filter (`skip`, ids): `genre`/`search`
   cannot override it, so the catalog stays off the board and its checkbox is disabled.
-- On a public instance the page never contacts an addon host on a private network, so an
-  addon hosted on the visitor's LAN shows its monogram instead of its icon.
 - Stremio may refresh manifests on login (`addonCollectionGet` with `update: true`);
   the app reports it if the saved board state does not survive the re-read.
 
