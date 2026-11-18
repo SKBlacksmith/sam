@@ -27,6 +27,10 @@ let linkDeadline = 0
 let linkGeneration = 0
 
 const addons = ref([])
+// The collection exactly as the account answered last. The backup is written from this, not
+// from `addons`, because dragging and ticking mutate `addons` in place: a "before" copy taken
+// from it would already carry the changes the person is about to apply.
+const saved = ref([])
 const baseline = ref('')
 const logos = reactive({})
 const busy = ref('')
@@ -91,6 +95,7 @@ onMounted(async () => {
     import('./fixture.js').then(({ demoAddons }) => {
       key.value = 'demo'
       addons.value = clone(demoAddons)
+      saved.value = clone(demoAddons)
       baseline.value = snapshot()
       rememberOrigin(addons.value)
       addons.value.forEach((addon) => refreshLogo(addon))
@@ -194,6 +199,7 @@ function forget() {
   sessionStorage.removeItem(KEY_STORE)
   key.value = ''
   addons.value = []
+  saved.value = []
   baseline.value = ''
   notice.value = ''
   error.value = ''
@@ -211,6 +217,7 @@ async function load() {
     const result = await getCollection(key.value)
     if (!result.addons.length) throw new Error('no addons found — this does not look like a Stremio account')
     addons.value = clone(result.addons)
+    saved.value = clone(result.addons)
     baseline.value = snapshot()
     rememberOrigin(addons.value)
     result.addons.forEach((addon) => refreshLogo(addon))
@@ -240,7 +247,9 @@ async function save() {
   const summary = [
     `Addons: ${addons.value.length}`,
     `Hidden from Home: ${hidden}`,
-    `Backup: ${backupOnSave.value ? 'enabled' : 'disabled'}`,
+    backupOnSave.value
+      ? 'Backup: the collection as it is in your account now'
+      : 'Backup: none',
     'Continue?',
   ].join('\n')
   if (!confirm(summary)) return
@@ -249,7 +258,7 @@ async function save() {
   notice.value = ''
   busy.value = 'Saving…'
   try {
-    if (backupOnSave.value) exportBackup('before')
+    if (backupOnSave.value && saved.value.length) exportBackup(saved.value, 'before')
     const payload = clone(addons.value)
     await setCollection(key.value, payload)
     const check = await getCollection(key.value)
@@ -257,6 +266,7 @@ async function save() {
     const hiddenExpected = payload.filter((a) => addonBoardState(a).state === 'hidden').length
     const hiddenActual = check.addons.filter((a) => addonBoardState(a).state === 'hidden').length
     addons.value = clone(check.addons)
+    saved.value = clone(check.addons)
     baseline.value = snapshot()
     check.addons.forEach((addon) => refreshLogo(addon))
     if (!orderOk) {
@@ -352,9 +362,9 @@ function searchOnly(addon) {
   return cats.length > 0 && cats.every((c) => toggleKind(c) === 'search')
 }
 
-function exportBackup(stage) {
+function exportBackup(list, stage) {
   const stamp = new Date().toISOString().replace(/[-:]/g, '').slice(0, 15)
-  const blob = new Blob([JSON.stringify(addons.value, null, 2)], { type: 'application/json' })
+  const blob = new Blob([JSON.stringify(list, null, 2)], { type: 'application/json' })
   const url = URL.createObjectURL(blob)
   const a = document.createElement('a')
   a.href = url
@@ -478,7 +488,7 @@ function flagText(addon) {
         <span class="spacer" />
         <label class="check backup">
           <input v-model="backupOnSave" type="checkbox" @change="setBackupPref" />
-          Back up the current order
+          Back up the order before saving
         </label>
         <span v-if="dirty" class="dirty">unsaved changes</span>
         <button class="primary" :disabled="!dirty || !!busy" @click="save">Save to Stremio</button>
