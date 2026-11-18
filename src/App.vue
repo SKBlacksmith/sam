@@ -391,6 +391,9 @@ async function restoreFile(event) {
       throw new Error('this is not a Stremio addon list')
     }
     if (!confirm(`Restore from ${file.name}?\nThe current addon order will be replaced.`)) return
+    // Restoring writes the account and nothing else. No backup is taken here whatever the
+    // toolbar checkbox says: the file being read already is the copy, and a second one would
+    // only land on top of it.
     busy.value = 'Restoring…'
     await setCollection(key.value, list)
     await load()
